@@ -35,7 +35,7 @@ PROMPT_TEMPLATE = """
 4. Sohbet oturumu ile ilgili genel sorular (sohbeti özetle, soruları listele gibi) için sağlanan metin alıntısını kullanma. Bu tür sorulara doğrudan cevap ver.
 5. Yanıtı, Türkçe dilinde ve anlaşılır bir şekilde ver.
 6. Kullanıcıya her zaman yardımcı olmaya çalış, ancak mevcut bilgilere dayanmayan yanıtlardan kaçın.
-
+7. Sen kimsin diye bir soru gelirse "Türk Hava Yolları'nın özel seyahat danışmanı Vecihi'yim. Görevim, yolculara seyahat planlamaları konusunda yardımcı olmak ve onlara Türk Hava Yolları'nın hizmetlerini tanıtmaktır. Eğer seyahat planı yaparken yardıma ihtiyacınız varsa, ben buradayım!" diye cevap ver.
 Eğer hazırsan, sana kullanıcının sorusunu ve ilgili metin alıntısını sağlıyorum.
 
 {context}
@@ -117,7 +117,7 @@ def generate_response(query_text):
     # Search the DB.
     results = db.similarity_search_with_relevance_scores(query_text, k=3)
     if len(results) == 0 or results[0][1] < 0.7:
-        return "Mesajınızı anlayamadım, size yardımcı olabilmemiz için 0850 333 0849 telefon numarasından bize ulaşabilirsiniz."
+        return "Üzgünüm, bu konuda yeterli bilgim yok. Size nasıl yardımcı olabilirim?"
 
     context_text = "\n\n---\n\n".join([doc.page_content for doc, _score in results])
     prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
@@ -139,9 +139,9 @@ def travel_agent_response(query_text):
     return response_text.content
 
 def is_travel_query(query):
-    """Check if the query is related to travel or a specific city/country."""
-    travel_keywords = ['şehir', 'ülke', 'gez', 'seyahat', 'tur', 'tatil', 'ziyaret']
-    return any(keyword in query.lower() for keyword in travel_keywords) or re.search(r'\b[A-Z][a-z]+\b', query)
+    """Check if the query is specifically about travel planning."""
+    travel_keywords = ['gezi planı', 'seyahat planı', 'tatil planı', 'tur planı']
+    return any(keyword in query.lower() for keyword in travel_keywords)
 
 def save_conversation_log(user_responses, bot_responses):
     conversation = []
@@ -216,37 +216,6 @@ def create_history_html():
     return history_filepath
 
 st.markdown("<h1 style='color: #DC1410; border-bottom: 2px solid #DC1410;'>Vecihi</h1>", unsafe_allow_html=True)
-
-input_container = st.container()
-response_container = st.container()
-
-# Capture user input and display bot responses
-user_input = st.text_input("Mesaj yazın: ", "", key="input")
-
-with response_container:
-    if user_input:
-        if is_travel_query(user_input):
-            response = travel_agent_response(user_input)
-        else:
-            response = generate_response(user_input)
-        st.session_state.user_responses.append(user_input)
-        st.session_state.bot_responses.append(response)
-        
-    if st.session_state['bot_responses']:
-        for i in range(len(st.session_state['bot_responses'])):
-            st.markdown(f'<div class="user-message">{st.session_state["user_responses"][i]}</div>', unsafe_allow_html=True)
-            col1, col2 = st.columns([1, 9])
-            with col1:
-                st.image("images/logo.jpg", width=50, use_column_width=True, clamp=True, output_format='auto')
-            with col2:
-                st.markdown(f'<div class="bot-message">{st.session_state["bot_responses"][i]}</div>', unsafe_allow_html=True)
-
-with input_container:
-    display_input = user_input
-
-if st.button("Geçmiş Konuşmalar"):
-    history_filepath = create_history_html()
-    webbrowser.open_new_tab(f'file://{os.path.abspath(history_filepath)}')
 
 
 MATCHING_QUESTIONS = [
@@ -325,9 +294,38 @@ def main():
     page = st.sidebar.radio("Sayfa Seçin", ["Ana Sayfa", "Eşleştirme Sistemi"])
 
     if page == "Ana Sayfa":
-        pass
+        input_container = st.container()
+        response_container = st.container()
+        
+        user_input = st.text_input("Mesaj yazın: ", "", key="input")
+
+        with response_container:
+            if user_input:
+                if is_travel_query(user_input):
+                    response = travel_agent_response(user_input)
+                else:
+                    response = generate_response(user_input)
+                st.session_state.user_responses.append(user_input)
+                st.session_state.bot_responses.append(response)
+                
+            if st.session_state['bot_responses']:
+                for i in range(len(st.session_state['bot_responses'])):
+                    st.markdown(f'<div class="user-message">{st.session_state["user_responses"][i]}</div>', unsafe_allow_html=True)
+                    col1, col2 = st.columns([1, 9])
+                    with col1:
+                        st.image("images/logo.jpg", width=50, use_column_width=True, clamp=True, output_format='auto')
+                    with col2:
+                        st.markdown(f'<div class="bot-message">{st.session_state["bot_responses"][i]}</div>', unsafe_allow_html=True)
+
+        with input_container:
+            display_input = user_input
+
     elif page == "Eşleştirme Sistemi":
         show_matching_page()
+        
+    if st.button("Geçmiş Konuşmalar"):
+        history_filepath = create_history_html()
+        webbrowser.open_new_tab(f'file://{os.path.abspath(history_filepath)}')
 
 if __name__ == "__main__":
     main()
