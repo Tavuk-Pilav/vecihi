@@ -11,7 +11,8 @@ from langchain.prompts import ChatPromptTemplate
 from datetime import datetime
 import webbrowser
 import re
-
+import random, math
+from typing import List, Dict
 load_dotenv()
 
 client = OpenAI(api_key=os.environ['OPENAI_API_KEY'])
@@ -54,7 +55,7 @@ Sen Türk Hava Yolları'nın özel seyahat danışmanı Vecihi'sin. Görevin, yo
 5. Ulaşım tavsiyeleri (mümkünse Türk Hava Yolları'nın o destinasyona olan uçuşlarını vurgula)
 6. Türk Hava Yolları'nın o destinasyona özel bir hizmeti veya kampanyası varsa bundan bahset
 
-Lütfen bu bilgileri Türkçe olarak, anlaşılır ve özet bir şekilde sağla. Cevabına "Tabii ki! Size [şehir/ülke] hakkında bilgi vermekten mutluluk duyarım." diye başla. Eğer bir bilgiye sahip değilsen, o kısmı atla. Cevabını verirken nazik ve yardımsever ol, ama fazla resmi olmamaya çalış.
+Lütfen bu bilgileri Türkçe olarak, anlaşılır ve özet bir şekilde sağla. Cevabına "Tabii ki Size [şehir/ülke] hakkında bilgi vermekten mutluluk duyarım." diye başla. Eğer bir bilgiye sahip değilsen, o kısmı atla. Cevabını verirken nazik ve yardımsever ol, ama fazla resmi olmamaya çalış.
 
 Kullanıcının sorusu: {question}
 
@@ -246,3 +247,87 @@ with input_container:
 if st.button("Geçmiş Konuşmalar"):
     history_filepath = create_history_html()
     webbrowser.open_new_tab(f'file://{os.path.abspath(history_filepath)}')
+
+
+MATCHING_QUESTIONS = [
+    "Yaş aralığınız nedir? (18-25, 26-40, 41-60, 60+)",
+    "Yolculuk sırasında tercih ettiğiniz aktivite nedir? (Uyumak, Sohbet etmek, Kitap okumak, Film izlemek)",
+    "Hangi dilleri konuşuyorsunuz? (Türkçe, İngilizce, Almanca, vb.)",
+    "Seyahat amacınız nedir? (İş, Tatil, Eğitim, Diğer)",
+    "Yemek tercihiniz nedir? (Vejeteryan, Vegan, Her şey, Özel diyet)"
+]
+
+class Passenger:
+    def __init__(self, name: str, answers: Dict[str, str]):
+        self.name = name
+        self.answers = answers
+        self.seat = None
+        self.vector = self._create_vector()
+
+    def _create_vector(self):
+        return [hash(self.answers[q]) for q in MATCHING_QUESTIONS]
+
+def cosine_similarity(v1: List[int], v2: List[int]) -> float:
+    dot_product = sum(a * b for a, b in zip(v1, v2))
+    magnitude1 = math.sqrt(sum(a * a for a in v1))
+    magnitude2 = math.sqrt(sum(b * b for b in v2))
+    return dot_product / (magnitude1 * magnitude2)
+
+def match_passengers(passengers: List[Passenger]) -> List[Passenger]:
+    unmatched = passengers.copy()
+    random.shuffle(unmatched)
+
+    while len(unmatched) > 1:
+        p1 = unmatched.pop(0)
+        best_match = max(unmatched, key=lambda p2: cosine_similarity(p1.vector, p2.vector))
+        unmatched.remove(best_match)
+
+        p1.seat = f"{len(passengers) - len(unmatched)}A"
+        best_match.seat = f"{len(passengers) - len(unmatched)}B"
+
+    if unmatched:
+        unmatched[0].seat = f"{len(passengers)}C"
+
+    return passengers
+
+def run_matching_system(name: str, answers: Dict[str, str]) -> List[Dict[str, str]]:
+    other_passengers = [
+        Passenger("Ali", {q: random.choice(["18-25", "Uyumak", "Türkçe", "Tatil", "Her şey"]) for q in MATCHING_QUESTIONS}),
+        Passenger("Ayşe", {q: random.choice(["26-40", "Sohbet etmek", "İngilizce", "İş", "Vejeteryan"]) for q in MATCHING_QUESTIONS}),
+        Passenger("Mehmet", {q: random.choice(["41-60", "Kitap okumak", "Almanca", "Eğitim", "Vegan"]) for q in MATCHING_QUESTIONS})
+    ]
+    
+    all_passengers = [Passenger(name, answers)] + other_passengers
+    matched_passengers = match_passengers(all_passengers)
+    
+    return [{"name": p.name, "seat": p.seat} for p in matched_passengers]
+
+def show_matching_page():
+    st.title("Yolcu Eşleştirme Sistemi")
+
+    if 'matching_answers' not in st.session_state:
+        st.session_state.matching_answers = {}
+
+    for question in MATCHING_QUESTIONS:
+        options = question.split("(")[1].rstrip(")").split(", ")
+        answer = st.selectbox(question, options)
+        st.session_state.matching_answers[question] = answer
+
+    if st.button("Eşleştir"):
+        name = st.session_state.get('user_name', 'Kullanıcı')
+        matches = run_matching_system(name, st.session_state.matching_answers)
+        st.write("Eşleştirme Sonuçları:")
+        for match in matches:
+            st.write(f"{match['name']} - Koltuk: {match['seat']}")
+
+def main():
+    st.sidebar.title("Navigasyon")
+    page = st.sidebar.radio("Sayfa Seçin", ["Ana Sayfa", "Eşleştirme Sistemi"])
+
+    if page == "Ana Sayfa":
+        pass
+    elif page == "Eşleştirme Sistemi":
+        show_matching_page()
+
+if __name__ == "__main__":
+    main()
