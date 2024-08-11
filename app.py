@@ -1,5 +1,7 @@
+import re
 import os
 import json
+import random, math
 from openai import OpenAI
 from dotenv import load_dotenv
 import streamlit as st
@@ -10,9 +12,9 @@ from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 from datetime import datetime
 import webbrowser
-import re
-import random, math
 from typing import List, Dict
+from PIL import Image
+
 load_dotenv()
 
 client = OpenAI(api_key=os.environ['OPENAI_API_KEY'])
@@ -35,7 +37,6 @@ PROMPT_TEMPLATE = """
 4. Sohbet oturumu ile ilgili genel sorular (sohbeti özetle, soruları listele gibi) için sağlanan metin alıntısını kullanma. Bu tür sorulara doğrudan cevap ver.
 5. Yanıtı, Türkçe dilinde ve anlaşılır bir şekilde ver.
 6. Kullanıcıya her zaman yardımcı olmaya çalış, ancak mevcut bilgilere dayanmayan yanıtlardan kaçın.
-7. Eğer "Sen kimsin" diye bir soru gelirse "Türk Hava Yolları'nın özel seyahat danışmanı Vecihi'yim. Görevim, yolculara seyahat planlamaları konusunda yardımcı olmak ve onlara Türk Hava Yolları'nın hizmetlerini tanıtmaktır. Eğer seyahat planı yaparken yardıma ihtiyacınız varsa, ben buradayım!" diye cevap ver.
 
 Eğer hazırsan, sana kullanıcının sorusunu ve ilgili metin alıntısını sağlıyorum.
 
@@ -45,6 +46,7 @@ Kullanıcı Sorusu: {question}
 
 Yanıt:
 """
+#7. Eğer "Sen kimsin" diye bir soru gelirse "Türk Hava Yolları'nın özel seyahat danışmanı Vecihi'yim. Görevim, yolculara seyahat planlamaları konusunda yardımcı olmak ve onlara Türk Hava Yolları'nın hizmetlerini tanıtmaktır. Eğer seyahat planı yaparken yardıma ihtiyacınız varsa, ben buradayım!" diye cevap ver.
 
 TRAVEL_AGENT_PROMPT = """
 Sen Türk Hava Yolları'nın özel seyahat danışmanı Vecihi'sin. Görevin, yolculara seyahat planlamaları konusunda yardımcı olmak ve onlara Türk Hava Yolları'nın hizmetlerini tanıtmaktır. Kullanıcının sorduğu şehir veya ülke hakkında aşağıdaki bilgileri sağlamalısın:
@@ -141,7 +143,7 @@ def travel_agent_response(query_text):
 
 def is_travel_query(query):
     """Check if the query is specifically about travel planning."""
-    travel_keywords = ['gezi planı', 'seyahat planı', 'tatil planı', 'tur planı']
+    travel_keywords = ['gezi planı', 'seyahat planı', 'tatil planı', 'tur planı', 'önerisi', 'öneri', 'önerir misin']
     return any(keyword in query.lower() for keyword in travel_keywords)
 
 def save_conversation_log(user_responses, bot_responses):
@@ -287,9 +289,16 @@ def show_matching_page():
         for match in matches:
             st.write(f"{match['name']} - Koltuk: {match['seat']}")
 
+def show_baggage_tracking_page():
+    st.title("Bagajım Nerede?")
+    st.write("Bagajınızın nerede olduğunu aşağıdaki canlı sistemden takip edebilirsiniz:")
+    
+    image = Image.open("/home/enes/Desktop/Hackathon/travelx_hackathon/images/bagaj.jpg")
+    st.image(image, caption="Bagaj Takip Sistemi", use_column_width=True)
+
 def main():
     st.sidebar.title("Navigasyon")
-    page = st.sidebar.radio("Sayfa Seçin", ["Ana Sayfa", "Eşleştirme Sistemi"])
+    page = st.sidebar.radio("Sayfa Seçin", ["Ana Sayfa", "Eşleştirme Sistemi", "Bagajım Nerede"])
 
     if page == "Ana Sayfa":
         input_container = st.container()
@@ -316,17 +325,19 @@ def main():
                         st.image("images/logo.jpg", width=50, use_column_width=True, clamp=True, output_format='auto')
                     with col2:
                         st.markdown(f'<div class="bot-message">{st.session_state["bot_responses"][i]}</div>', unsafe_allow_html=True)
-
+        save_conversation_log(st.session_state.user_responses, st.session_state.bot_responses)
         with input_container:
             display_input = user_input
 
         if st.button("Geçmiş Konuşmalar"):
             history_filepath = create_history_html()
-            save_conversation_log(st.session_state.user_responses, st.session_state.bot_responses)
             webbrowser.open(f'file://{os.path.abspath(history_filepath)}')
 
     elif page == "Eşleştirme Sistemi":
         show_matching_page()
+
+    elif page == "Bagajım Nerede":
+        show_baggage_tracking_page()
 
 if __name__ == "__main__":
     main()
