@@ -35,7 +35,8 @@ PROMPT_TEMPLATE = """
 4. Sohbet oturumu ile ilgili genel sorular (sohbeti özetle, soruları listele gibi) için sağlanan metin alıntısını kullanma. Bu tür sorulara doğrudan cevap ver.
 5. Yanıtı, Türkçe dilinde ve anlaşılır bir şekilde ver.
 6. Kullanıcıya her zaman yardımcı olmaya çalış, ancak mevcut bilgilere dayanmayan yanıtlardan kaçın.
-7. Sen kimsin diye bir soru gelirse "Türk Hava Yolları'nın özel seyahat danışmanı Vecihi'yim. Görevim, yolculara seyahat planlamaları konusunda yardımcı olmak ve onlara Türk Hava Yolları'nın hizmetlerini tanıtmaktır. Eğer seyahat planı yaparken yardıma ihtiyacınız varsa, ben buradayım!" diye cevap ver.
+7. Eğer "Sen kimsin" diye bir soru gelirse "Türk Hava Yolları'nın özel seyahat danışmanı Vecihi'yim. Görevim, yolculara seyahat planlamaları konusunda yardımcı olmak ve onlara Türk Hava Yolları'nın hizmetlerini tanıtmaktır. Eğer seyahat planı yaparken yardıma ihtiyacınız varsa, ben buradayım!" diye cevap ver.
+
 Eğer hazırsan, sana kullanıcının sorusunu ve ilgili metin alıntısını sağlıyorum.
 
 {context}
@@ -162,7 +163,7 @@ def generate_summary(conversation):
     prompt = f"Aşağıdaki konuşmayı özetle ve kullanıcı bir şikayetten bahsediyorsa onu vurgula:\n\n{conversation_text}\n\nÖzet:"
     
     response = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="gpt-3.5-turbo",
         messages=[{"role": "user", "content": prompt}]
     )
     
@@ -196,11 +197,8 @@ def create_history_html():
             
             html_content += f"<div class='conversation'><h2>{log_file}</h2>"
             for entry in conversation:
-                if isinstance(entry, dict) and 'user' in entry and 'bot' in entry:
-                    html_content += f"<p><strong>User:</strong> {entry['user']}</p>"
-                    html_content += f"<p><strong>Bot:</strong> {entry['bot']}</p>"
-                else:
-                    print(f"Geçersiz giriş bulundu ve atlandı: {entry}")
+                html_content += f"<p><strong>User:</strong> {entry['user']}</p>"
+                html_content += f"<p><strong>Bot:</strong> {entry['bot']}</p>"
             
             summary = generate_summary(conversation)
             html_content += f"<div class='summary'><h3>Konuşma Özeti</h3><p>{summary}</p></div></div>"
@@ -308,6 +306,8 @@ def main():
                 st.session_state.user_responses.append(user_input)
                 st.session_state.bot_responses.append(response)
                 
+                #save_conversation_log(st.session_state.user_responses, st.session_state.bot_responses)
+                
             if st.session_state['bot_responses']:
                 for i in range(len(st.session_state['bot_responses'])):
                     st.markdown(f'<div class="user-message">{st.session_state["user_responses"][i]}</div>', unsafe_allow_html=True)
@@ -320,12 +320,13 @@ def main():
         with input_container:
             display_input = user_input
 
+        if st.button("Geçmiş Konuşmalar"):
+            history_filepath = create_history_html()
+            save_conversation_log(st.session_state.user_responses, st.session_state.bot_responses)
+            webbrowser.open(f'file://{os.path.abspath(history_filepath)}')
+
     elif page == "Eşleştirme Sistemi":
         show_matching_page()
-        
-    if st.button("Geçmiş Konuşmalar"):
-        history_filepath = create_history_html()
-        webbrowser.open_new_tab(f'file://{os.path.abspath(history_filepath)}')
 
 if __name__ == "__main__":
     main()
