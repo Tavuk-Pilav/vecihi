@@ -1,14 +1,17 @@
 # Vecihi
 
+![TravelX](https://github.com/user-attachments/assets/6d46666f-8178-405e-8998-992983bc0f65)
+
 This application was developed as part of the TravelX Ideathon. It's a RAG-LLM-GenAI based chatbot designed to answer questions on customers' minds. You send your question and the chatbot generates the most appropriate answer from vectordb or agent.
 
-### Features 
+### Features:
 - **Buy ticket**: Finding and purchasing tickets can be done by just talking
 - **RAG:** Can answer all questions about THY and aviation
 - **Dictionary:** Provides definitions for aviation terms
 - **Native:** Speaks a native language
 - **Trip plan:** You can create a detailed trip plan for the destination
 - **Seat matching**: Pairs people with similar tastes for a better travel experience
+
 
 ### Technologies Used
 - [OpenAI](https://platform.openai.com/docs/api-reference/introduction) - OpenAI version: 1.35.14
@@ -74,4 +77,5 @@ streamlit run app.py
 ```
 ----
 
+https://github.com/user-attachments/assets/aea3f904-55ee-4700-aa53-fb8f7a0f5a0b
 
