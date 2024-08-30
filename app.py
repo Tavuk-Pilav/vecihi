@@ -203,7 +203,7 @@ def generate_response(query_text):
     prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
     prompt = prompt_template.format(context=context_text, question=query_text)
 
-    model = ChatOpenAI(openai_api_key=OPENAI_API_KEY)
+    model = ChatOpenAI(openai_api_key=OPENAI_API_KEY, model_name="gpt-4o-mini")
     response_text = model.invoke(prompt)
 
     return response_text.content
@@ -213,7 +213,7 @@ def travel_agent_response(query_text):
     prompt_template = ChatPromptTemplate.from_template(TRAVEL_AGENT_PROMPT)
     prompt = prompt_template.format(question=query_text)
 
-    model = ChatOpenAI(openai_api_key=OPENAI_API_KEY)
+    model = ChatOpenAI(openai_api_key=OPENAI_API_KEY, model_name="gpt-4o-mini")
     response_text = model.invoke(prompt)
 
     return response_text.content
@@ -345,7 +345,7 @@ def main():
                 st.markdown(f'<div class="user-message">{st.session_state["user_responses"][i]}</div>', unsafe_allow_html=True)
                 col1, col2 = st.columns([1, 9])
                 with col1:
-                    st.image("images/logo.jpg", width=50, use_column_width=True, clamp=True, output_format='auto')
+                    st.image("images/logo_cocuk_adam.png", width=50, use_column_width=True, clamp=True, output_format='auto')
                 with col2:
                     st.markdown(f'<div class="bot-message">{st.session_state["bot_responses"][i]}</div>', unsafe_allow_html=True)
 
